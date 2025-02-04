@@ -1,0 +1,31 @@
+db:
+  dns: "host=localhost user=socialat password=socialat dbname=socialat port=5432 sslmode=disable TimeZone=Asia/Shanghai"
+webServer:
+  # port: the port socialat will take to run the web server
+  port: 8001
+  # hmacSecretKey: used to generate jwt hash. it should be private on production
+  hmacSecretKey: "A Secret String"
+  # aliveSessionHours: time to keep the login session alive
+  aliveSessionHours: 24
+  # aesSecretKey: a secret key used to encrypt sensitive data
+  aesSecretKey: "A Secret String"
+  #Authentication type. 0: use local username/password, 1: use external auth microservice (With passkey)
+  service:
+    authType: 0
+    authHost: "localhost:8000"
+
+# Config log level: "trace", "debug", "info", "warn", "error", "off"
+logLevel: "debug"
+
+# The path where socialat.log will be saved exp: ./logs
+logDir: ./logs
+# mail: config for mail client, tested running with google mail service
+mail:
+  addr: smtp.gmail.com:587
+  userName: your_user_name@gmail.com
+  # password: taken from: https://myaccount.google.com/security
+  # click on 'App passwords'
+  password: your_password
+  host: smtp.gmail.com
+  # from: send mail from. the same with userName for google service
+  from: mail_from@example.com
