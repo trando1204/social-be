@@ -26,6 +26,8 @@ type Config struct {
 	AesSecretKey      string         `yaml:"aesSecretKey"`
 	AliveSessionHours int            `yaml:"aliveSessionHours"`
 	ClientAddr        string         `yaml:"clientAddr"`
+	PdsAdminToken     string         `yaml:"pdsAdminToken"`
+	PdsServer         string         `yaml:"pdsServer"`
 	Service           service.Config `yaml:"service"`
 }
 
@@ -54,6 +56,12 @@ func NewWebServer(c Config, db storage.Storage, mailClient *email.MailClient) (*
 	}
 	if c.HmacSecretKey == "" {
 		return nil, fmt.Errorf("please set up hmacSecretKey")
+	}
+	if c.PdsAdminToken == "" {
+		return nil, fmt.Errorf("please set up pdsAdminToken")
+	}
+	if c.PdsServer == "" {
+		return nil, fmt.Errorf("please set up pdsServer")
 	}
 	socket := NewSocketServer()
 	sv := service.NewService(c.Service, db.GetDB(), socket)

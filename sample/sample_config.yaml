@@ -9,6 +9,8 @@ webServer:
   aliveSessionHours: 24
   # aesSecretKey: a secret key used to encrypt sensitive data
   aesSecretKey: "A Secret String"
+  pdsAdminToken: "PDS admin token"
+  pdsServer: "PDS server url"
   #Authentication type. 0: use local username/password, 1: use external auth microservice (With passkey)
   service:
     authType: 0

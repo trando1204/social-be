@@ -23,27 +23,32 @@ type BskyAgent struct {
 	// xrpc transport, a wrapper around http server
 	client     *xrpc.Client
 	handle     string
-	apikey     string
+	password   string
 	email      string
 	inviteCode string
 }
 
 // Creates new BlueSky Agent
-func NewAgent(ctx context.Context, server string, handle string, apikey string, email string) BskyAgent {
-
+func NewAgent(ctx context.Context, server string, handle string, password string) BskyAgent {
 	if server == "" {
 		server = defaultPDS
 	}
-
 	return BskyAgent{
 		client: &xrpc.Client{
 			Client: new(http.Client),
 			Host:   server,
 		},
-		handle: handle,
-		apikey: apikey,
-		email:  email,
+		handle:   handle,
+		password: password,
 	}
+}
+
+func (c *BskyAgent) SetEmail(email string) {
+	c.email = email
+}
+
+func (c *BskyAgent) SetAdminToken(adminPass string) {
+	c.client.AdminToken = &adminPass
 }
 
 func (c *BskyAgent) SetInviteCode(inviteCode string) {
@@ -54,7 +59,7 @@ func (c *BskyAgent) Connect(ctx context.Context) error {
 	// Authenticate with the Bluesky server
 	input_for_session := &atproto.ServerCreateSession_Input{
 		Identifier: c.handle,
-		Password:   c.apikey,
+		Password:   c.password,
 	}
 	session, err := atproto.ServerCreateSession(ctx, c.client, input_for_session)
 
@@ -70,23 +75,34 @@ func (c *BskyAgent) Connect(ctx context.Context) error {
 		Handle:     session.Handle,
 		Did:        session.Did,
 	}
-
 	return nil
 }
 
-func (c *BskyAgent) CreateAccount(ctx context.Context) error {
+func (c *BskyAgent) CreateInviteCode(ctx context.Context, adminToken string) (error, string) {
+	input_for_create_invite_code := &atproto.ServerCreateInviteCode_Input{
+		UseCount: 1,
+	}
+	c.client.AdminToken = &adminToken
+	accountOutput, err := atproto.ServerCreateInviteCode(ctx, c.client, input_for_create_invite_code)
+	if err != nil {
+		log.Printf("UNABLE TO CREATE INVITE CODE: %v", err)
+		return err, ""
+	}
+	return nil, accountOutput.Code
+}
+
+func (c *BskyAgent) CreateAccount(ctx context.Context, email, inviteCode string) error {
 	// Authenticate with the Bluesky server
 	input_for_create := &atproto.ServerCreateAccount_Input{
 		Handle:     c.handle,
-		Password:   &c.apikey,
-		Email:      &c.email,
-		InviteCode: &c.inviteCode,
+		Password:   &c.password,
+		Email:      &email,
+		InviteCode: &inviteCode,
 	}
-	accountOutput, err := atproto.ServerCreateAccount(ctx, c.client, input_for_create)
+	_, err := atproto.ServerCreateAccount(ctx, c.client, input_for_create)
 	if err != nil {
 		return fmt.Errorf("UNABLE TO CREATE ACCOUNT: %v", err)
 	}
-	fmt.Println("account output: ", accountOutput.Handle, ", ", accountOutput.AccessJwt)
 	return nil
 }
 
