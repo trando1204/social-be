@@ -21,13 +21,15 @@ var blob []lexutil.LexBlob
 // Wrapper over the atproto xrpc transport
 type BskyAgent struct {
 	// xrpc transport, a wrapper around http server
-	client *xrpc.Client
-	handle string
-	apikey string
+	client     *xrpc.Client
+	handle     string
+	apikey     string
+	email      string
+	inviteCode string
 }
 
 // Creates new BlueSky Agent
-func NewAgent(ctx context.Context, server string, handle string, apikey string) BskyAgent {
+func NewAgent(ctx context.Context, server string, handle string, apikey string, email string) BskyAgent {
 
 	if server == "" {
 		server = defaultPDS
@@ -40,7 +42,12 @@ func NewAgent(ctx context.Context, server string, handle string, apikey string) 
 		},
 		handle: handle,
 		apikey: apikey,
+		email:  email,
 	}
+}
+
+func (c *BskyAgent) SetInviteCode(inviteCode string) {
+	c.inviteCode = inviteCode
 }
 
 func (c *BskyAgent) Connect(ctx context.Context) error {
@@ -68,7 +75,19 @@ func (c *BskyAgent) Connect(ctx context.Context) error {
 }
 
 func (c *BskyAgent) CreateAccount(ctx context.Context) error {
-
+	// Authenticate with the Bluesky server
+	input_for_create := &atproto.ServerCreateAccount_Input{
+		Handle:     c.handle,
+		Password:   &c.apikey,
+		Email:      &c.email,
+		InviteCode: &c.inviteCode,
+	}
+	accountOutput, err := atproto.ServerCreateAccount(ctx, c.client, input_for_create)
+	if err != nil {
+		return fmt.Errorf("UNABLE TO CREATE ACCOUNT: %v", err)
+	}
+	fmt.Println("account output: ", accountOutput.Handle, ", ", accountOutput.AccessJwt)
+	return nil
 }
 
 func (c *BskyAgent) UploadImages(ctx context.Context, images ...Image) ([]lexutil.LexBlob, error) {
