@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"socialat/be/utils"
 
 	"github.com/bluesky-social/indigo/api/atproto"
 	appbsky "github.com/bluesky-social/indigo/api/bsky"
@@ -26,6 +27,10 @@ type BskyAgent struct {
 	password   string
 	email      string
 	inviteCode string
+}
+
+func NewBasicAgent(ctx context.Context, server string) BskyAgent {
+	return NewAgent(ctx, server, "", "")
 }
 
 // Creates new BlueSky Agent
@@ -55,7 +60,7 @@ func (c *BskyAgent) SetInviteCode(inviteCode string) {
 	c.inviteCode = inviteCode
 }
 
-func (c *BskyAgent) Connect(ctx context.Context) error {
+func (c *BskyAgent) Connect(ctx context.Context) (*xrpc.AuthInfo, error) {
 	// Authenticate with the Bluesky server
 	input_for_session := &atproto.ServerCreateSession_Input{
 		Identifier: c.handle,
@@ -64,7 +69,7 @@ func (c *BskyAgent) Connect(ctx context.Context) error {
 	session, err := atproto.ServerCreateSession(ctx, c.client, input_for_session)
 
 	if err != nil {
-		return fmt.Errorf("UNABLE TO CONNECT: %v", err)
+		return nil, fmt.Errorf("UNABLE TO CONNECT: %v", err)
 	}
 
 	// Access Token is used to make authenticated requests
@@ -75,35 +80,40 @@ func (c *BskyAgent) Connect(ctx context.Context) error {
 		Handle:     session.Handle,
 		Did:        session.Did,
 	}
-	return nil
+	return c.client.Auth, nil
 }
 
-func (c *BskyAgent) CreateInviteCode(ctx context.Context, adminToken string) (error, string) {
+func CreateInviteCode(ctx context.Context, server, adminToken string) (string, error) {
+	agent := NewBasicAgent(ctx, server)
 	input_for_create_invite_code := &atproto.ServerCreateInviteCode_Input{
 		UseCount: 1,
 	}
-	c.client.AdminToken = &adminToken
-	accountOutput, err := atproto.ServerCreateInviteCode(ctx, c.client, input_for_create_invite_code)
+	agent.client.AdminToken = &adminToken
+	accountOutput, err := atproto.ServerCreateInviteCode(ctx, agent.client, input_for_create_invite_code)
 	if err != nil {
 		log.Printf("UNABLE TO CREATE INVITE CODE: %v", err)
-		return err, ""
+		return "", err
 	}
-	return nil, accountOutput.Code
+	return accountOutput.Code, nil
 }
 
-func (c *BskyAgent) CreateAccount(ctx context.Context, email, inviteCode string) error {
+func CreateAccount(ctx context.Context, server, username, password, email, inviteCode string) (*atproto.ServerCreateAccount_Output, error) {
+	agent := NewBasicAgent(ctx, server)
+	// Get handle from server and username
+	// TODO: check handle exist on pds server
+	handleStr := utils.GetHandleFromUsername(server, username)
 	// Authenticate with the Bluesky server
 	input_for_create := &atproto.ServerCreateAccount_Input{
-		Handle:     c.handle,
-		Password:   &c.password,
+		Handle:     handleStr,
+		Password:   &password,
 		Email:      &email,
 		InviteCode: &inviteCode,
 	}
-	_, err := atproto.ServerCreateAccount(ctx, c.client, input_for_create)
+	out, err := atproto.ServerCreateAccount(ctx, agent.client, input_for_create)
 	if err != nil {
-		return fmt.Errorf("UNABLE TO CREATE ACCOUNT: %v", err)
+		return nil, fmt.Errorf("UNABLE TO CREATE ACCOUNT: %v", err)
 	}
-	return nil
+	return out, nil
 }
 
 func (c *BskyAgent) UploadImages(ctx context.Context, images ...Image) ([]lexutil.LexBlob, error) {

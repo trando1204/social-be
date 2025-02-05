@@ -8,6 +8,8 @@ const (
 	SortDESC = 2
 )
 
+var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
+
 type ResponseData struct {
 	IsError bool        `json:"error"`
 	Msg     string      `json:"msg"`

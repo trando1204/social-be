@@ -2,11 +2,17 @@ package main
 
 import (
 	"fmt"
+	"math/rand"
 	"socialat/be/email"
 	"socialat/be/log"
 	"socialat/be/storage"
 	"socialat/be/webserver"
+	"time"
 )
+
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
 
 func main() {
 	err := _main()

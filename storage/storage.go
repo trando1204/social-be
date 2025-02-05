@@ -19,6 +19,7 @@ type Storage interface {
 	Count(f Filter, obj interface{}) (int64, error)
 	Delete(d DeleteFilter, obj interface{}) error
 	GetDB() *gorm.DB
+	PdsUserStorage
 }
 
 type DeleteFilter interface {
@@ -62,7 +63,7 @@ func NewStorage(c Config, oslogger *oslog.Logger) (Storage, error) {
 }
 
 func autoMigrate(db *gorm.DB) error {
-	return db.AutoMigrate()
+	return db.AutoMigrate(&PdsUser{})
 }
 
 func (p *psql) Create(obj interface{}) error {

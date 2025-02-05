@@ -11,6 +11,7 @@ import (
 	"io"
 	"log"
 	"math"
+	"math/rand"
 	"net/http"
 	"net/url"
 	"os"
@@ -258,4 +259,23 @@ func HandlerRPCError(err error) error {
 		return fmt.Errorf("%s", errMsg)
 	}
 	return err
+}
+
+func RandSeq(n int) string {
+	b := make([]rune, n)
+	for i := range b {
+		b[i] = letters[rand.Intn(len(letters))]
+	}
+	return string(b)
+}
+
+func GetHandleFromUsername(server, username string) string {
+	serverName := server
+	if strings.HasPrefix(server, "http") {
+		serverArr := strings.Split(server, "//")
+		if len(serverArr) > 1 {
+			serverName = serverArr[1]
+		}
+	}
+	return fmt.Sprintf("%s.%s", username, serverName)
 }

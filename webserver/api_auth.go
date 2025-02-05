@@ -1,13 +1,17 @@
 package webserver
 
 import (
+	"context"
 	"fmt"
 	"net/http"
+	"socialat/be/atlib"
 	"socialat/be/authpb"
 	"socialat/be/storage"
 	"socialat/be/utils"
 	"socialat/be/webserver/portal"
 	"time"
+
+	"github.com/bluesky-social/indigo/xrpc"
 )
 
 type apiAuth struct {
@@ -117,10 +121,28 @@ func (a *apiAuth) login(w http.ResponseWriter, r *http.Request) {
 		utils.Response(w, http.StatusInternalServerError, err, nil)
 		return
 	}
+	handle := utils.GetHandleFromUsername(a.conf.PdsServer, authClaim.Username)
+	// get pds user from db
+	pdsUser, err := a.service.GetPdsUserByHandle(handle)
+	if err != nil {
+		log.Errorf("pds user not exist. %v", err)
+		utils.Response(w, http.StatusInternalServerError, err, nil)
+		return
+	}
+	// connect to pds server
+	ctx := context.Background()
+	agent := atlib.NewAgent(ctx, a.conf.PdsServer, handle, pdsUser.Password)
+	jwtOut, err := agent.Connect(ctx)
+	if err != nil {
+		log.Errorf("connect to pds server failed. %v", err)
+		utils.Response(w, http.StatusInternalServerError, err, nil)
+		return
+	}
 	utils.ResponseOK(w, Map{
 		"token":     tokenString,
 		"loginType": int(storage.AuthLocalUsernamePassword),
 		"userInfo":  authClaim,
+		"pdsJwt":    jwtOut,
 	})
 }
 
@@ -158,13 +180,55 @@ func (a *apiAuth) register(w http.ResponseWriter, r *http.Request) {
 		utils.Response(w, http.StatusInternalServerError, err, nil)
 		return
 	}
-
+	// create bluesky pds account
+	pdsJwt, err := a.CreateBlueskyPdsAccount(&authClaim, f.Email)
+	if err != nil {
+		utils.Response(w, http.StatusInternalServerError, err, nil)
+		return
+	}
 	//handler login imediately
 	utils.ResponseOK(w, Map{
 		"token":     tokenString,
 		"loginType": int(storage.AuthLocalUsernamePassword),
 		"userInfo":  authClaim,
+		"pdsJwt":    pdsJwt,
 	})
+}
+
+func (a *apiAuth) CreateBlueskyPdsAccount(authClaim *storage.AuthClaims, email string) (*xrpc.AuthInfo, error) {
+	ctx := context.Background()
+	// create invite code
+	inviteCode, err := atlib.CreateInviteCode(ctx, a.conf.PdsServer, a.conf.PdsAdminToken)
+	if err != nil {
+		log.Errorf("Create pds invite code failed. %v", err)
+		return nil, err
+	}
+	passRandom := utils.RandSeq(16)
+	accountRes, err := atlib.CreateAccount(ctx, a.conf.PdsServer, authClaim.Username, passRandom, email, inviteCode)
+	if err != nil {
+		log.Errorf("Create pds account failed. %v", err)
+		return nil, err
+	}
+	now := time.Now()
+	pdsUser := storage.PdsUser{
+		Handle:     accountRes.Handle,
+		Password:   passRandom,
+		Email:      email,
+		Did:        accountRes.Did,
+		InviteCode: inviteCode,
+		CreatedAt:  now,
+		UpdatedAt:  now,
+	}
+	if err = a.db.CreatePdsUser(&pdsUser); err != nil {
+		log.Errorf("Create Pds user on local db failed. %v", err)
+		return nil, err
+	}
+	return &xrpc.AuthInfo{
+		Handle:     accountRes.Handle,
+		Did:        accountRes.Did,
+		AccessJwt:  accountRes.AccessJwt,
+		RefreshJwt: accountRes.RefreshJwt,
+	}, nil
 }
 
 func (a *apiAuth) UpdatePasskeyFinish(w http.ResponseWriter, r *http.Request) {
@@ -253,6 +317,11 @@ func (a *apiAuth) FinishPasskeyTransferRegister(w http.ResponseWriter, r *http.R
 
 func (a *apiAuth) FinishPasskeyRegister(w http.ResponseWriter, r *http.Request) {
 	sessionKey := r.FormValue("sessionKey")
+	email := r.FormValue("email")
+	if utils.IsEmpty(email) {
+		utils.Response(w, http.StatusInternalServerError, fmt.Errorf("get email failed"), nil)
+		return
+	}
 	res, err := a.service.FinishRegistrationHandler(r.Context(), &authpb.SessionKeyAndHttpRequest{
 		SessionKey: sessionKey,
 		Request: &authpb.HttpRequest{
@@ -286,11 +355,18 @@ func (a *apiAuth) FinishPasskeyRegister(w http.ResponseWriter, r *http.Request) 
 		utils.Response(w, http.StatusInternalServerError, err, nil)
 		return
 	}
+	// create bluesky pds account
+	pdsJwt, err := a.CreateBlueskyPdsAccount(&authClaim, email)
+	if err != nil {
+		utils.Response(w, http.StatusInternalServerError, err, nil)
+		return
+	}
 	//handler login imediately
 	utils.ResponseOK(w, Map{
 		"token":     tokenString,
 		"loginType": int(storage.AuthMicroservicePasskey),
 		"userInfo":  authClaim,
+		"pdsJwt":    pdsJwt,
 	})
 }
 
@@ -351,11 +427,28 @@ func (a *apiAuth) AssertionResult(w http.ResponseWriter, r *http.Request) {
 		utils.Response(w, http.StatusInternalServerError, err, nil)
 		return
 	}
-
+	handle := utils.GetHandleFromUsername(a.conf.PdsServer, authClaim.Username)
+	// get pds user from db
+	pdsUser, err := a.service.GetPdsUserByHandle(handle)
+	if err != nil {
+		log.Errorf("pds user not exist. %v", err)
+		utils.Response(w, http.StatusInternalServerError, err, nil)
+		return
+	}
+	// connect to pds server
+	ctx := context.Background()
+	agent := atlib.NewAgent(ctx, a.conf.PdsServer, handle, pdsUser.Password)
+	jwtOut, err := agent.Connect(ctx)
+	if err != nil {
+		log.Errorf("connect to pds server failed. %v", err)
+		utils.Response(w, http.StatusInternalServerError, err, nil)
+		return
+	}
 	utils.ResponseOK(w, Map{
 		"token":     tokenString,
 		"loginType": int(storage.AuthMicroservicePasskey),
 		"userInfo":  authClaim,
+		"pdsJwt":    jwtOut,
 	})
 }
 
