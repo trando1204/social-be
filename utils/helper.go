@@ -242,3 +242,20 @@ func JsonStringToObject(jsonString string, to interface{}) error {
 	}
 	return nil
 }
+
+// handler error from rpc
+func HandlerRPCError(err error) error {
+	if err == nil {
+		return nil
+	}
+	errString := err.Error()
+	if strings.HasPrefix(errString, "rpc error:") {
+		errSplitArr := strings.Split(errString, "desc =")
+		if len(errSplitArr) < 2 {
+			return err
+		}
+		errMsg := strings.TrimSpace(errSplitArr[1])
+		return fmt.Errorf("%s", errMsg)
+	}
+	return err
+}

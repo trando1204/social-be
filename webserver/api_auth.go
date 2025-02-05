@@ -6,6 +6,7 @@ import (
 	"socialat/be/authpb"
 	"socialat/be/storage"
 	"socialat/be/utils"
+	"socialat/be/webserver/portal"
 	"time"
 )
 
@@ -80,6 +81,90 @@ func (a *apiAuth) UpdatePasskeyStart(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	utils.ResponseOK(w, res.Data)
+}
+
+func (a *apiAuth) login(w http.ResponseWriter, r *http.Request) {
+	var f portal.LoginForm
+	err := a.parseJSON(r, &f)
+	if err != nil {
+		utils.Response(w, http.StatusBadRequest, err, nil)
+		return
+	}
+	resData, err := a.service.LoginByPassword(r.Context(), &authpb.WithPasswordRequest{
+		Username: f.UserName,
+		Password: f.Password,
+	})
+	if err != nil {
+		utils.Response(w, http.StatusInternalServerError, err, nil)
+		return
+	}
+	var data map[string]any
+	err = utils.JsonStringToObject(resData.Data, &data)
+	if err != nil {
+		utils.Response(w, http.StatusInternalServerError, err, nil)
+		return
+	}
+	var authClaim storage.AuthClaims
+	userClaims, userExist := data["user"]
+	token, tokenExist := data["token"]
+	if !userExist || !tokenExist {
+		utils.Response(w, http.StatusInternalServerError, fmt.Errorf("Get login token failed"), nil)
+		return
+	}
+	tokenString := token.(string)
+	err = utils.CatchObject(userClaims, &authClaim)
+	if err != nil {
+		utils.Response(w, http.StatusInternalServerError, err, nil)
+		return
+	}
+	utils.ResponseOK(w, Map{
+		"token":     tokenString,
+		"loginType": int(storage.AuthLocalUsernamePassword),
+		"userInfo":  authClaim,
+	})
+}
+
+func (a *apiAuth) register(w http.ResponseWriter, r *http.Request) {
+	var f portal.RegisterForm
+	err := a.parseJSONAndValidate(r, &f)
+	if err != nil {
+		utils.Response(w, http.StatusBadRequest, err, nil)
+		return
+	}
+	resData, err := a.service.RegisterByPassword(r.Context(), &authpb.WithPasswordRequest{
+		Username: f.UserName,
+		Password: f.Password,
+	})
+	if err != nil {
+		utils.Response(w, http.StatusInternalServerError, err, nil)
+		return
+	}
+	var data map[string]any
+	err = utils.JsonStringToObject(resData.Data, &data)
+	if err != nil {
+		utils.Response(w, http.StatusInternalServerError, err, nil)
+		return
+	}
+	var authClaim storage.AuthClaims
+	userClaims, userExist := data["user"]
+	token, tokenExist := data["token"]
+	if !userExist || !tokenExist {
+		utils.Response(w, http.StatusInternalServerError, fmt.Errorf("Get login token failed"), nil)
+		return
+	}
+	tokenString := token.(string)
+	err = utils.CatchObject(userClaims, &authClaim)
+	if err != nil {
+		utils.Response(w, http.StatusInternalServerError, err, nil)
+		return
+	}
+
+	//handler login imediately
+	utils.ResponseOK(w, Map{
+		"token":     tokenString,
+		"loginType": int(storage.AuthLocalUsernamePassword),
+		"userInfo":  authClaim,
+	})
 }
 
 func (a *apiAuth) UpdatePasskeyFinish(w http.ResponseWriter, r *http.Request) {
@@ -207,6 +292,15 @@ func (a *apiAuth) FinishPasskeyRegister(w http.ResponseWriter, r *http.Request) 
 		"loginType": int(storage.AuthMicroservicePasskey),
 		"userInfo":  authClaim,
 	})
+}
+
+func (a *apiAuth) GenRandomUsername(w http.ResponseWriter, r *http.Request) {
+	res, err := a.service.GenRandomUsernameHandler(r.Context())
+	if err != nil {
+		utils.Response(w, http.StatusInternalServerError, err, nil)
+		return
+	}
+	utils.ResponseOK(w, res)
 }
 
 func (a *apiAuth) CheckAuthUsername(w http.ResponseWriter, r *http.Request) {

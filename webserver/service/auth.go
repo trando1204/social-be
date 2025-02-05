@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"socialat/be/authpb"
 	"socialat/be/storage"
+	"socialat/be/utils"
 
 	socketio "github.com/googollee/go-socket.io"
 	"google.golang.org/grpc"
@@ -67,7 +68,7 @@ func (s *Service) CheckMiddlewareLogin(ctx context.Context, req *authpb.CommonRe
 	}
 	_, err = (*s.AuthClient).IsLoggingOn(ctx, req)
 	if err != nil {
-		return false, err
+		return false, utils.HandlerRPCError(err)
 	}
 	return true, nil
 }
@@ -79,7 +80,7 @@ func (s *Service) GetAuthClaimsLogin(ctx context.Context, req *authpb.CommonRequ
 	}
 	res, err := (*s.AuthClient).IsLoggingOn(ctx, req)
 	if err != nil {
-		return res, err
+		return res, utils.HandlerRPCError(err)
 	}
 	return res, nil
 }
@@ -91,7 +92,7 @@ func (s *Service) BeginRegistrationHandler(ctx context.Context, req *authpb.With
 	}
 	res, err := (*s.AuthClient).BeginRegistration(ctx, req)
 	if err != nil {
-		return res, err
+		return res, utils.HandlerRPCError(err)
 	}
 	return res, nil
 }
@@ -103,7 +104,7 @@ func (s *Service) CancelRegisterHandler(ctx context.Context, req *authpb.CancelR
 	}
 	res, err := (*s.AuthClient).CancelRegister(ctx, req)
 	if err != nil {
-		return res, err
+		return res, utils.HandlerRPCError(err)
 	}
 	return res, nil
 }
@@ -115,7 +116,7 @@ func (s *Service) BeginUpdatePasskeyHandler(ctx context.Context, req *authpb.Com
 	}
 	res, err := (*s.AuthClient).BeginUpdatePasskey(ctx, req)
 	if err != nil {
-		return res, err
+		return res, utils.HandlerRPCError(err)
 	}
 	return res, nil
 }
@@ -127,7 +128,7 @@ func (s *Service) FinishUpdatePasskeyHandler(ctx context.Context, req *authpb.Fi
 	}
 	res, err := (*s.AuthClient).FinishUpdatePasskey(ctx, req)
 	if err != nil {
-		return res, err
+		return res, utils.HandlerRPCError(err)
 	}
 	return res, nil
 }
@@ -139,7 +140,7 @@ func (s *Service) FinishRegistrationHandler(ctx context.Context, req *authpb.Ses
 	}
 	res, err := (*s.AuthClient).FinishRegistration(ctx, req)
 	if err != nil {
-		return res, err
+		return res, utils.HandlerRPCError(err)
 	}
 	return res, nil
 }
@@ -151,7 +152,7 @@ func (s *Service) AssertionOptionsHandler(ctx context.Context) (*authpb.Response
 	}
 	res, err := (*s.AuthClient).AssertionOptions(ctx, &authpb.CommonRequest{})
 	if err != nil {
-		return res, err
+		return res, utils.HandlerRPCError(err)
 	}
 	return res, nil
 }
@@ -163,7 +164,7 @@ func (s *Service) AssertionResultHandler(ctx context.Context, req *authpb.Sessio
 	}
 	res, err := (*s.AuthClient).AssertionResult(ctx, req)
 	if err != nil {
-		return res, err
+		return res, utils.HandlerRPCError(err)
 	}
 	return res, nil
 }
@@ -175,7 +176,7 @@ func (s *Service) BeginConfirmPasskeyHandler(ctx context.Context, req *authpb.Co
 	}
 	res, err := (*s.AuthClient).BeginConfirmPasskey(ctx, req)
 	if err != nil {
-		return res, err
+		return res, utils.HandlerRPCError(err)
 	}
 	return res, nil
 }
@@ -187,7 +188,7 @@ func (s *Service) FinishConfirmPasskeyHandler(ctx context.Context, req *authpb.S
 	}
 	res, err := (*s.AuthClient).FinishConfirmPasskey(ctx, req)
 	if err != nil {
-		return res, err
+		return res, utils.HandlerRPCError(err)
 	}
 	return res, nil
 }
@@ -199,7 +200,7 @@ func (s *Service) ChangeUsernameFinishHandler(ctx context.Context, req *authpb.C
 	}
 	res, err := (*s.AuthClient).ChangeUsernameFinish(ctx, req)
 	if err != nil {
-		return res, err
+		return res, utils.HandlerRPCError(err)
 	}
 	return res, nil
 }
@@ -211,7 +212,7 @@ func (s *Service) SyncUsernameDBHandler(ctx context.Context, req *authpb.SyncUse
 	}
 	res, err := (*s.AuthClient).SyncUsernameDB(ctx, req)
 	if err != nil {
-		return res, err
+		return res, utils.HandlerRPCError(err)
 	}
 	return res, nil
 }
@@ -223,7 +224,7 @@ func (s *Service) GetAdminUserListHandler(ctx context.Context, req *authpb.Commo
 	}
 	res, err := (*s.AuthClient).GetAdminUserList(ctx, req)
 	if err != nil {
-		return res, err
+		return res, utils.HandlerRPCError(err)
 	}
 	return res, nil
 }
@@ -235,7 +236,7 @@ func (s *Service) GetUserInfoByUsernameHandler(ctx context.Context, req *authpb.
 	}
 	res, err := (*s.AuthClient).GetUserInfoByUsername(ctx, req)
 	if err != nil {
-		return res, err
+		return res, utils.HandlerRPCError(err)
 	}
 	return res, nil
 }
@@ -247,7 +248,7 @@ func (s *Service) GetExcludeLoginUserNameListHandler(ctx context.Context, req *a
 	}
 	res, err := (*s.AuthClient).GetExcludeLoginUserNameList(ctx, req)
 	if err != nil {
-		return res, err
+		return res, utils.HandlerRPCError(err)
 	}
 	return res, nil
 }
@@ -259,7 +260,7 @@ func (s *Service) IsLoggingOnHandler(ctx context.Context, req *authpb.CommonRequ
 	}
 	res, err := (*s.AuthClient).IsLoggingOn(ctx, req)
 	if err != nil {
-		return res, err
+		return res, utils.HandlerRPCError(err)
 	}
 	return res, nil
 }
@@ -271,7 +272,7 @@ func (s *Service) GenRandomUsernameHandler(ctx context.Context) (*authpb.Respons
 	}
 	res, err := (*s.AuthClient).GenRandomUsername(ctx, &authpb.CommonRequest{})
 	if err != nil {
-		return res, err
+		return res, utils.HandlerRPCError(err)
 	}
 	return res, nil
 }
@@ -283,7 +284,31 @@ func (s *Service) CheckUserHandler(ctx context.Context, req *authpb.WithUsername
 	}
 	res, err := (*s.AuthClient).CheckUser(ctx, req)
 	if err != nil {
-		return res, err
+		return res, utils.HandlerRPCError(err)
+	}
+	return res, nil
+}
+
+func (s *Service) RegisterByPassword(ctx context.Context, req *authpb.WithPasswordRequest) (*authpb.ResponseData, error) {
+	err := s.CheckAndInitAuthClient()
+	if err != nil {
+		return nil, err
+	}
+	res, err := (*s.AuthClient).RegisterByPassword(ctx, req)
+	if err != nil {
+		return res, utils.HandlerRPCError(err)
+	}
+	return res, nil
+}
+
+func (s *Service) LoginByPassword(ctx context.Context, req *authpb.WithPasswordRequest) (*authpb.ResponseData, error) {
+	err := s.CheckAndInitAuthClient()
+	if err != nil {
+		return nil, err
+	}
+	res, err := (*s.AuthClient).LoginByPassword(ctx, req)
+	if err != nil {
+		return res, utils.HandlerRPCError(err)
 	}
 	return res, nil
 }
