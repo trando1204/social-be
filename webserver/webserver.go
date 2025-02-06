@@ -12,6 +12,7 @@ import (
 	"socialat/be/webserver/service"
 	"strings"
 
+	"github.com/bluesky-social/indigo/xrpc"
 	socketio "github.com/googollee/go-socket.io"
 	"github.com/gorilla/schema"
 
@@ -136,46 +137,33 @@ func (s *WebServer) parseJSONAndValidate(r *http.Request, data interface{}) erro
 func (s *WebServer) loggedInMiddleware(next http.Handler) http.Handler {
 	fn := func(w http.ResponseWriter, r *http.Request) {
 		var bearer = r.Header.Get("Authorization")
-		var loginTypeStr = r.Header.Get("Logintype")
-		var loginType int
-		if loginTypeStr == "1" {
-			loginType = 1
-		} else {
-			loginType = 0
-		}
-		if s.service.Conf.AuthType == int(storage.AuthMicroservicePasskey) && loginType == 1 {
-			exClaims, isLogin := s.checkMicroServiceLoginMiddleware(r, bearer)
-			if !isLogin {
-				utils.Response(w, http.StatusBadRequest, utils.InvalidCredential, nil)
-				return
-			}
-			localAuthClaims := authClaims{
-				Id:       uint64(exClaims.Id),
-				UserRole: utils.UserRole(exClaims.Role),
-				Expire:   exClaims.Expire,
-				UserName: exClaims.Username,
-			}
-			ctx := context.WithValue(r.Context(), authClaimsCtxKey, &localAuthClaims)
-			next.ServeHTTP(w, r.WithContext(ctx))
-			return
-		} else {
-			// Should be a bearer token
-			if len(bearer) > 6 && strings.ToUpper(bearer[0:7]) == "BEARER " {
-				var tokenStr = bearer[7:]
-				var claim authClaims
-				token, err := jwt.ParseWithClaims(tokenStr, &claim, func(token *jwt.Token) (interface{}, error) {
-					return []byte(s.conf.HmacSecretKey), nil
-				})
-				if err != nil {
-					utils.Response(w, http.StatusUnauthorized, utils.NewError(err, utils.ErrorUnauthorized), nil)
-					return
-				}
-				ctx := context.WithValue(r.Context(), authClaimsCtxKey, token.Claims)
-				next.ServeHTTP(w, r.WithContext(ctx))
-				return
-			}
+		exClaims, isLogin := s.checkMicroServiceLoginMiddleware(r, bearer)
+		if !isLogin {
 			utils.Response(w, http.StatusBadRequest, utils.InvalidCredential, nil)
+			return
 		}
+		localAuthClaims := authClaims{
+			Id:       uint64(exClaims.Id),
+			UserRole: utils.UserRole(exClaims.Role),
+			Expire:   exClaims.Expire,
+			UserName: exClaims.Username,
+		}
+		var pdsJwtStr = r.Header.Get("PdsJwt")
+		if !utils.IsEmpty(pdsJwtStr) {
+			var jwtObj xrpc.AuthInfo
+			err := utils.JsonStringToObject(pdsJwtStr, &jwtObj)
+			if err != nil {
+				log.Errorf("Logged in but unable to connect to Pds server")
+			} else {
+				localAuthClaims.AccessJwt = jwtObj.AccessJwt
+				localAuthClaims.RefreshJwt = jwtObj.RefreshJwt
+				localAuthClaims.Handle = jwtObj.Handle
+				localAuthClaims.Did = jwtObj.Did
+			}
+		}
+
+		ctx := context.WithValue(r.Context(), authClaimsCtxKey, &localAuthClaims)
+		next.ServeHTTP(w, r.WithContext(ctx))
 	}
 	return http.HandlerFunc(fn)
 }

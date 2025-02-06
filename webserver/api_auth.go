@@ -24,6 +24,10 @@ type authClaims struct {
 	Expire      int64
 	UserName    string
 	DisplayName string
+	AccessJwt   string
+	RefreshJwt  string
+	Handle      string
+	Did         string
 }
 
 func (c authClaims) Valid() error {

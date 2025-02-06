@@ -14,9 +14,8 @@ type RegisterForm struct {
 }
 
 type LoginForm struct {
-	UserName  string `validate:"required,alphanum,gte=4,lte=32"`
-	Password  string `validate:"required"`
-	LoginType int    `validate:"required"`
+	UserName string `validate:"required,alphanum,gte=4,lte=32"`
+	Password string `validate:"required"`
 }
 
 type PasskeyRegisterInfo struct {

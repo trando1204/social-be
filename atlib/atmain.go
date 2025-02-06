@@ -10,6 +10,7 @@ import (
 	"socialat/be/utils"
 
 	"github.com/bluesky-social/indigo/api/atproto"
+	"github.com/bluesky-social/indigo/api/bsky"
 	appbsky "github.com/bluesky-social/indigo/api/bsky"
 	lexutil "github.com/bluesky-social/indigo/lex/util"
 	"github.com/bluesky-social/indigo/xrpc"
@@ -48,6 +49,15 @@ func NewAgent(ctx context.Context, server string, handle string, password string
 	}
 }
 
+func (c *BskyAgent) SetClientAuth(accessJwt, refreshJwt, handle, did string) {
+	c.client.Auth = &xrpc.AuthInfo{
+		AccessJwt:  accessJwt,
+		RefreshJwt: refreshJwt,
+		Handle:     handle,
+		Did:        did,
+	}
+}
+
 func (c *BskyAgent) SetEmail(email string) {
 	c.email = email
 }
@@ -58,6 +68,15 @@ func (c *BskyAgent) SetAdminToken(adminPass string) {
 
 func (c *BskyAgent) SetInviteCode(inviteCode string) {
 	c.inviteCode = inviteCode
+}
+
+func ConnectToGetSession(ctx context.Context, server, handle, password string) (*xrpc.AuthInfo, error) {
+	agent := NewAgent(ctx, server, handle, password)
+	authRes, err := agent.Connect(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return authRes, nil
 }
 
 func (c *BskyAgent) Connect(ctx context.Context) (*xrpc.AuthInfo, error) {
@@ -81,6 +100,17 @@ func (c *BskyAgent) Connect(ctx context.Context) (*xrpc.AuthInfo, error) {
 		Did:        session.Did,
 	}
 	return c.client.Auth, nil
+}
+
+func HandlerValidSession(ctx context.Context, server string, authInfo *xrpc.AuthInfo) error {
+	agent := NewBasicAgent(ctx, server)
+	agent.client.Auth = authInfo
+	_, err := atproto.ServerGetSession(ctx, agent.client)
+	if err != nil {
+		log.Printf("Get pds session failed. %v", err)
+		return err
+	}
+	return nil
 }
 
 func CreateInviteCode(ctx context.Context, server, adminToken string) (string, error) {
@@ -174,6 +204,14 @@ func (c *BskyAgent) PostToFeed(ctx context.Context, post appbsky.FeedPost) (stri
 	}
 
 	return response.Cid, response.Uri, nil
+}
+
+func (c *BskyAgent) GetTimeline(ctx context.Context, cursor string, limit int64) (*bsky.FeedGetTimeline_Output, error) {
+	response, err := bsky.FeedGetTimeline(ctx, c.client, "reverse-chronological", cursor, limit)
+	if err != nil {
+		return nil, fmt.Errorf("unable to get timeline, %v", err)
+	}
+	return response, nil
 }
 
 func getImageAsBuffer(imageURL string) ([]byte, error) {

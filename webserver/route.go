@@ -12,7 +12,7 @@ func (s *WebServer) Route() {
 	s.mux.Use(middleware.Recoverer, cors.Handler(cors.Options{
 		AllowedOrigins:   []string{"https://*", "http://*"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"Accept", "Authorization", "Logintype", "Content-Type", "X-CSRF-Token"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "PdsJwt", "Content-Type", "X-CSRF-Token"},
 		ExposedHeaders:   []string{"Link"},
 		AllowCredentials: false,
 		MaxAge:           300, // Maximum value not ignored by any of major browsers
@@ -38,6 +38,12 @@ func (s *WebServer) Route() {
 			r.Post("/update-passkey-finish", authRouter.UpdatePasskeyFinish)
 			r.Post("/register", authRouter.register)
 			r.Post("/login", authRouter.login)
+		})
+		r.Route("/pds", func(r chi.Router) {
+			r.Use(s.loggedInMiddleware)
+			var pdsRouter = apiPds{WebServer: s}
+			r.Get("/get-timeline", pdsRouter.getPdsTimeline)
+			r.Get("/get-pds-session", pdsRouter.getPdsSession)
 		})
 	})
 }

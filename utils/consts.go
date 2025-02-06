@@ -4,8 +4,9 @@ const (
 	SortByCreated  = 1
 	SortByLastSeen = 2
 
-	SortASC  = 1
-	SortDESC = 2
+	SortASC              = 1
+	SortDESC             = 2
+	LimitOfFetchTimeline = 50
 )
 
 var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
